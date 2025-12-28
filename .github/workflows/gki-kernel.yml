@@ -456,6 +456,16 @@ jobs:
             fi
           fi
 
+      - name: HymoFS 补丁
+        if: ${{ inputs.android_version == 'android14' || inputs.android_version == 'android15' }}
+        run: |
+          cd "$CONFIG/common"
+          VERSION="${{ inputs.android_version }}"
+
+          echo "Detected Version: $VERSION"
+
+          curl -LSs https://raw.githubusercontent.com/Anatdx/HymoFS/main/setup.sh | bash -s defconfig arch/arm64/configs/gki_defconfig
+
       - name: Apply UNICODE_BYPASS and MEMORY_OPT
         if: ${{ !inputs.cancel_susfs }}
         run: |

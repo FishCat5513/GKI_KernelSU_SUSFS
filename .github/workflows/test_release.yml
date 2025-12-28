@@ -67,56 +67,6 @@ jobs:
     with:
       kernelsu_variant: ${{ inputs.kernelsu_variant }}
 
-  build-kernel-a12-5-10:
-    uses: ./.github/workflows/kernel-a12-5.10.yml
-    secrets: inherit
-    with:
-      kernelsu_variant: ${{ inputs.kernelsu_variant }}
-      kernelsu_branch: ${{ inputs.kernelsu_branch }}
-      # # kernelsu_branch_other: ${{ inputs.kernelsu_branch_other }}
-      version: ${{ inputs.version }}
-      use_zram: ${{ inputs.use_zram }}
-      use_kpm: ${{ inputs.use_kpm }}
-      use_bbg: ${{ inputs.use_bbg }}
-      cancel_susfs: ${{ inputs.cancel_susfs }}
-
-  # build-kernel-a13-5-10:
-  #   uses: ./.github/workflows/kernel-a13-5.10.yml
-  #   secrets: inherit
-  #   with:
-  #     make_release: ${{ inputs.make_release }}
-  #     kernelsu_variant: ${{ inputs.kernelsu_variant }}
-  #     kernelsu_branch: ${{ inputs.kernelsu_branch }}
-  #     # kernelsu_branch_other: ${{ inputs.kernelsu_branch_other }}
-  #     version: ${{ inputs.version }}
-  #     use_zram: ${{ inputs.use_zram }}
-  #     use_kpm: ${{ inputs.use_kpm }}
-
-  build-kernel-a13-5-15:
-    uses: ./.github/workflows/kernel-a13-5.15.yml
-    secrets: inherit
-    with:
-      kernelsu_variant: ${{ inputs.kernelsu_variant }}
-      kernelsu_branch: ${{ inputs.kernelsu_branch }}
-      # kernelsu_branch_other: ${{ inputs.kernelsu_branch_other }}
-      version: ${{ inputs.version }}
-      use_zram: ${{ inputs.use_zram }}
-      use_kpm: ${{ inputs.use_kpm }}
-      use_bbg: ${{ inputs.use_bbg }}
-      cancel_susfs: ${{ inputs.cancel_susfs }}
-
-  # build-kernel-a14-5-15:
-  #   uses: ./.github/workflows/kernel-a14-5.15.yml
-  #   secrets: inherit
-  #   with:
-  #     make_release: ${{ inputs.make_release }}
-  #     kernelsu_variant: ${{ inputs.kernelsu_variant }}
-  #     kernelsu_branch: ${{ inputs.kernelsu_branch }}
-  #     # kernelsu_branch_other: ${{ inputs.kernelsu_branch_other }}
-  #     version: ${{ inputs.version }}
-  #     use_zram: ${{ inputs.use_zram }}
-  #     use_kpm: ${{ inputs.use_kpm }}
-
   build-kernel-a14-6-1:
     uses: ./.github/workflows/kernel-a14-6.1.yml
     secrets: inherit
@@ -150,10 +100,6 @@ jobs:
       actions: write
     needs:
         - get_manager
-        - build-kernel-a12-5-10
-        # - build-kernel-a13-5-10
-        - build-kernel-a13-5-15
-        # - build-kernel-a14-5-15
         - build-kernel-a14-6-1
         - build-kernel-a15-6-6
     env:
@@ -163,6 +109,14 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       RELEASE_NAME: "GKI内核: ${{ inputs.kernelsu_variant == 'Next' && 'KernelSU-' || '' }}${{ inputs.kernelsu_variant }}(${{ needs.get_manager.outputs.ksuVer }})  & SUSFS ${{ needs.get_manager.outputs.susVer }}"
       RELEASE_NOTES: |
+        Add [Hymo](https://github.com/Anatdx/hymo) hybrid mount meta-module (GKI 6.1/6.6 only).  
+        **Note:** Stability has not been fully verified; user testing is required.  
+        Please provide feedback at: [zzh20188/GKI_KernelSU_SUSFS/issues](https://github.com/zzh20188/GKI_KernelSU_SUSFS/issues)
+        ----------------------------------------
+        添加 [Hymo](https://github.com/Anatdx/hymo) 混合挂载元模块（仅限 GKI 6.1/6.6）。  
+        **注意：** 稳定性尚未完全验证，需用户自行测试。  
+        反馈建议请至：[此处](https://github.com/zzh20188/GKI_KernelSU_SUSFS/issues)
+        ----------------------------------------
         此处包含：**${{ inputs.kernelsu_variant == 'Next' && 'KernelSU-' || '' }}${{ inputs.kernelsu_variant }}**、SUSFS ${{ needs.get_manager.outputs.susVer }} ${{ inputs.use_zram && '、LZ4KD' || '' }}
 
         功能:
