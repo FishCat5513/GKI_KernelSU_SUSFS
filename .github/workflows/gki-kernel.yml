@@ -465,7 +465,9 @@ jobs:
           echo "Detected Version: $VERSION"
 
           curl -LSs https://raw.githubusercontent.com/Anatdx/HymoFS/main/setup.sh | bash -s defconfig arch/arm64/configs/gki_defconfig
-          echo "CFLAGS_hymofs.o := -Wno-error" >> fs/Makefile
+          
+          echo "CFLAGS_hymofs.o := -Wno-unused-variable -Wno-bitwise-instead-of-logical" >> fs/Makefile
+
       - name: Apply UNICODE_BYPASS and MEMORY_OPT
         if: ${{ !inputs.cancel_susfs }}
         run: |
@@ -799,7 +801,7 @@ jobs:
             if [ -f "build/build.sh" ]; then
               LTO=thin BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh CC="/usr/bin/ccache clang" || exit 1
             else
-              tools/bazel build --disk_cache=/home/runner/.cache/bazel --config=fast --kbuild_options=KCFLAGS="-Wno-error" --lto=thin //common:kernel_aarch64_dist || exit 1
+              tools/bazel build --disk_cache=/home/runner/.cache/bazel --config=fast --kbuild_options=KCFLAGS="-Wno-unused-variable -Wno-bitwise-instead-of-logical" --lto=thin //common:kernel_aarch64_dist || exit 1
               echo "debug:输出内核版本号"
               strings ./bazel-bin/common/kernel_aarch64/Image | grep 'Linux version'
             fi
