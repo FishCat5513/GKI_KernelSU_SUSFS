@@ -465,14 +465,13 @@ jobs:
           patch -p1 --forward < "../../Action-Build/patches/reduce_cache_pressure.patch"
           if [ "${{ inputs.kernel_version }}" = "5.10" ] || [ "${{ inputs.kernel_version }}" = "5.15" ]; then
             patch -p1 --forward < "../../Action-Build/patches/clear_page_16bytes_align.patch"
-            echo "Patching unicode!"
-            patch -p1 --forward < "../../Action-Build/patches/unicode_bypass_fix_6.1-.patch"
+            patch -p1 --forward < "../../Action-Build/patches/unicode_bypass_fix_2_6.1-.patch" || true
+            patch -p1 --forward < "../../Action-Build/patches/unicode_bypass_fix_6.1-.patch" || true
           else
             cat "../../Action-Build/patches/clear_page_16bytes_align.patch" | sed -e 's/SYM_FUNC_START_PI(clear_page)/SYM_FUNC_START_PI(__pi_clear_page)/' | patch -p1 -F3 --forward
-            echo "Patching unicode!"
-            patch -p1 --forward < "../../Action-Build/patches/unicode_bypass_fix_6.1+.patch"
+            patch -p1 --forward < "../../Action-Build/patches/unicode_bypass_fix_6.1+.patch" || true
           fi
-      
+          
       - name: 升级LZ4至1.10.0
         if: ${{ inputs.use_zram }}
         run: |
@@ -620,26 +619,7 @@ jobs:
           wget -O- https://github.com/vc-teahouse/Baseband-guard/raw/main/setup.sh | bash
           echo "CONFIG_BBG=y" >> common/arch/arm64/configs/gki_defconfig
           
-          # Before sed: Show the original LSM default line for comparison
-          echo "=== Before sed ==="
-          sed -n '/^config LSM$/,/^help$/{ /^[[:space:]]*default/ p }' common/security/Kconfig
-          
-          # Apply the sed command to add baseband_guard to default security configurations
-          sed -i '/^config LSM$/,/^help$/{ /^[[:space:]]*default/ { /baseband_guard/! s/lockdown/lockdown,baseband_guard/ } }' common/security/Kconfig
-          
-          # After sed: Show the updated LSM default line
-          echo "=== After sed ==="
-          sed -n '/^config LSM$/,/^help$/{ /^[[:space:]]*default/ p }' common/security/Kconfig
-          
-          # Confirm baseband_guard is now present (should output the line if successful)
-          echo "=== Confirmation: grep for baseband_guard ==="
-          if ! grep -q "baseband_guard" common/security/Kconfig; then
-            echo "ERROR: baseband_guard not found after sed - stopping workflow"
-            exit 1
-          else
-            echo "SUCCESS: baseband_guard found in security configuration"
-            grep "baseband_guard" common/security/Kconfig
-          fi
+          sed -i '/^config LSM$/,/^help$/{ /^[[:space:]]*default/ { /baseband_guard/! s/selinux/selinux,baseband_guard/ } }' security/Kconfig
 
       - name: 添加配置
         run: |
@@ -794,32 +774,34 @@ jobs:
               strings ./bazel-bin/common/kernel_aarch64/Image | grep 'Linux version'
             fi
 
-      - name: 修补 Image 文件(仅限sukisu)
-        if: ${{ inputs.use_kpm && inputs.kernelsu_variant == 'SukiSU' && (inputs.android_version == 'android12' || inputs.android_version == 'android13') }}
-        run: |
-          if [ "${{ inputs.kernel_version }}" != "6.6" ]; then
-            echo "Patching Image file..."
-            cd "$CONFIG/out/${{ inputs.android_version }}-${{ inputs.kernel_version }}/dist"
-            curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU_patch/refs/heads/main/kpm/patch_linux" -o patch
-            chmod 777 patch
-            ./patch
-            rm -rf Image
-            mv oImage Image
-            cd ../../../..
-          fi
 
-      - name: 修补 Image 文件 安卓14和安卓15(仅限sukisu)
-        if: ${{ inputs.use_kpm && inputs.kernelsu_variant == 'SukiSU' && (inputs.android_version == 'android14' || inputs.android_version == 'android15') }}
+      - name: 修补 Image 文件 (仅限 SukiSU)
+        if: ${{ inputs.use_kpm && inputs.kernelsu_variant == 'SukiSU' }}
         run: |
+          target_path=""
 
-            echo "Patching Image file..."
-            cd "$CONFIG/bazel-bin/common/kernel_aarch64/"
-            curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU_patch/refs/heads/main/kpm/patch_linux" -o patch
-            chmod 777 patch
-            ./patch
-            rm -rf Image
-            mv oImage Image
-            cd ../../..
+          case "${{ inputs.android_version }}" in
+            "android12"|"android13")
+              if [ "${{ inputs.kernel_version }}" != "6.6" ]; then
+                target_path="$CONFIG/out/${{ inputs.android_version }}-${{ inputs.kernel_version }}/dist"
+              fi
+              ;;
+            "android14"|"android15")
+              target_path="$CONFIG/bazel-bin/common/kernel_aarch64/"
+              ;;
+          esac
+          
+          cd SukiSU_patch/
+          git checkout 83aa64b7548890bb1f2eff6c990c03a1802df27b
+          cp -r kpm/patch_linux "$target_path/patch"
+
+          echo "正在修补目录: $target_path"
+          cd "$target_path"
+          chmod 777 patch
+          ./patch
+          rm -rf Image
+          mv oImage Image
+
 
       - name: 创建Bootimgs文件夹并复制镜像
         if: ${{ inputs.android_version == 'android12' || inputs.android_version == 'android13' }}

@@ -168,13 +168,13 @@ jobs:
         功能:
         -> ${{ inputs.kernelsu_variant == 'Next' && 'KernelSU-' || '' }}${{ inputs.kernelsu_variant }}${{ inputs.kernelsu_variant == 'Official' && '原版' || '' }}${{ inputs.kernelsu_branch == 'Dev(开发)' && format('({0})', needs.get_manager.outputs.ksuVer) || '稳定版' }}
         -> SUSFS ඞ ${{ needs.get_manager.outputs.susVer }}
-        -> SUSFS Inline Hooks
+        ${{ inputs.kernelsu_variant != 'SukiSU' && '-> KPROBE Hooks' || '-> SUSFS Inline Hooks' }}
         ${{ inputs.kernelsu_variant != 'Official' && '-> Magic Mount 支持' || '-> OVERLAYFS 支持' }}
         -> BBG安全补丁 ${{ inputs.use_bbg && '支持' || '不支持' }}
-        ${{ inputs.use_kpm && '-> KPM 支持' || '' }}
+        ${{ inputs.use_kpm && '-> KPM 支持' || '' }} | 若不支持可[手动修补](https://github.com/zzh20188/GKI_KernelSU_SUSFS/issues/132)
         -> **LZ4KD&ONEPLUS_LZ4K**  ${{ inputs.use_zram && '开启' || '未开启' }}
         -> lz4: v1.10.0 ${{ inputs.use_zram && '开启' || '未开启' }}
-        
+        -> Unicode零宽绕过修复与内存优化 支持
         模块: 
         -> https://github.com/sidex15/ksu_module_susfs
         
