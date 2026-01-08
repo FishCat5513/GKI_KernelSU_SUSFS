@@ -793,8 +793,10 @@ jobs:
           
           cd SukiSU_patch/
           git checkout 83aa64b7548890bb1f2eff6c990c03a1802df27b
-          cp -r kpm/patch_linux "$target_path/patch"
+          cd ..
 
+          cp -r SukiSU_patch/kpm/patch_linux "$target_path/patch"
+          
           echo "正在修补目录: $target_path"
           cd "$target_path"
           chmod 777 patch
