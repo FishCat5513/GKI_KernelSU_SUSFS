@@ -305,76 +305,15 @@ jobs:
           echo "obj-y += hmbird_patch.o" >> Makefile
           tail -n 3 Makefile
       
-      - name: 确定 KernelSU 的分支
-        run: |
 
-          branch_input="${{ inputs.kernelsu_branch }}"
-          variant_input="${{ inputs.kernelsu_variant }}"
-
-          case "$branch_input" in
-            "Stable(标准)")
-              case "$variant_input" in
-                "Next")
-                  echo "BRANCH=-s stable" >> $GITHUB_ENV
-                  ;;
-                "SukiSU")
-                  echo "BRANCH=-s builtin" >> $GITHUB_ENV
-                  ;;
-                *)
-                  echo "BRANCH=-" >> $GITHUB_ENV
-                  ;;
-              esac
-              ;;
-            "Dev(开发)")
-              case "$variant_input" in
-                "Official" | "MKSU") echo "BRANCH=-s main" >> $GITHUB_ENV ;;
-                "Next")              echo "BRANCH=-s dev" >> $GITHUB_ENV ;;
-                "SukiSU")           echo "BRANCH=-s builtin" >> $GITHUB_ENV ;;
-                *) 
-                  echo "错误：未定义开发分支的变体 '$variant_input'" >&2
-                  exit 1
-                  ;;
-              esac
-              ;;
-            *)
-              echo "错误：需要自定义分支时未提供参数" >&2
-              exit 1
-              ;;
-          esac
-
-          # 如果选择了 SukiSU 且取消 SUSFS，则强制使用 main 分支
-          if [ "$variant_input" = "SukiSU" ] && [ "${{ inputs.cancel_susfs }}" = "true" ]; then
-            echo "BRANCH=-s main" >> $GITHUB_ENV
-          fi
-
-      - name: 添加 KernelSU
+      - name: 添加 RESukiSU
         run: |
           echo "切换到配置目录 $CONFIG"
           cd "$CONFIG"
+          echo "添加 KernelSU RESukiSU 版本..."
+          curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash -s builtin
 
-          if [ "${{ inputs.kernelsu_variant }}" == "Official" ]; then
-            echo "添加 KernelSU Official 版本..."
-            curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash $BRANCH
-          elif [ "${{ inputs.kernelsu_variant }}" == "Next" ]; then
-            echo "添加 KernelSU Next 版本..."
-            curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh" | bash $BRANCH
-          elif [ "${{ inputs.kernelsu_variant }}" == "MKSU" ]; then
-            echo "添加 KernelSU MKSU 版本..."
-            curl -LSs "https://raw.githubusercontent.com/5ec1cff/KernelSU/main/kernel/setup.sh" | bash $BRANCH
-          elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ]; then
-            echo "添加 KernelSU SukiSU 版本..."
-            curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash $BRANCH
-          fi
       
-      - name: SUKISU管理器信息
-        if: ${{ inputs.kernelsu_variant == 'SukiSU' }}
-        run: |
-          if [ ! -z "${{ vars.MANAGER_STR }}" ]; then
-            cd "$CONFIG"
-            cd ./KernelSU
-            sed -i 's/\(v\$1-\).*\(@\$\)/\1${{ vars.MANAGER_STR }}\2/' ./kernel/Makefile 
-            sed -n '50,70p' ./kernel/Makefile
-          fi
 
       - name: 为 KernelSU 变体安装 SUSFS 补丁
         if: ${{ !inputs.cancel_susfs }}
@@ -389,66 +328,8 @@ jobs:
           cp ../susfs4ksu/kernel_patches/fs/* ./common/fs/
           cp ../susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
 
-          if [ "${{ inputs.kernelsu_variant }}" == "Official" ]; then
-            echo "为 Official KernelSU 应用 SUSFS 补丁..."
-            cd ./KernelSU
-            cp ../../susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch ./ 
-            patch -p1 --forward < 10_enable_susfs_for_ksu.patch || true
-
-            # echo "Applying Official specific patches..."
-            # cp ../../zzh_patch/mksu_core_hook.c.patch ./
-            # patch -p1 --fuzz=3 < mksu_core_hook.c.patch
-
-          elif [ "${{ inputs.kernelsu_variant }}" == "Next" ]; then
-            # 临时恢复KSU-NEXT的dev编译
-            echo "为 KernelSU-Next 应用 SUSFS 补丁..."
-            cd ./KernelSU-Next
-            if [ "$BRANCH" == "-s next" ]; then
-              echo "当前处于 KernelSU-Next Dev 分支"
-              cp ../../susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch ./
-              patch -f -p1 --fuzz=3 --ignore-whitespace < 10_enable_susfs_for_ksu.patch || true
-              echo "应用临时修复补丁..."
-              cp ../../zzh_patch/next-patch/* ./
-              patch -p1 < fix_apk_sign.c.patch
-              patch -p1 < fix_supercalls.c.patch
-              patch -p1 < fix_Makefile.patch
-              patch -p1 < fix_app_profile.c.patch
-              patch -p1 < fix_app_profile.h.patch
-              patch -p1 < fix_selinux.h.patch
-              patch -p1 < fix_setuid_hook.c.patch
-
-              sed -i '8d' kernel/selinux/selinux.c
-            fi
-            
-          elif [ "${{ inputs.kernelsu_variant }}" == "MKSU" ]; then
-            echo "为 MKSU 应用 SUSFS 补丁..."
-            cd ./KernelSU
-
-            cp ../../susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch ./
-            patch -p1 --forward < 10_enable_susfs_for_ksu.patch || true
-
-            # echo "Applying MKSU specific patches..."
-            # cp ../../zzh_patch/mksu_core_hook.c.patch ./
-            # patch -p1 --fuzz=3 < mksu_core_hook.c.patch
-
-          elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ]; then
-            echo "为 SukiSU 应用 SUSFS 补丁..."
-            cd ./KernelSU
-            echo "应用 SukiSU 专用的 SUSFS 补丁..."
-          else
-            echo "错误：未识别的 KernelSU 变体"
-            exit 1
-          fi
-
-          cd ../common
-
-
+          cd ./common
           patch -p1 --fuzz=3 < 50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch || true
-
-          # if [ "${{ inputs.kernelsu_variant }}" == "MKSU" ]; then
-          #   cp ../../zzh_patch/rm_devpt.patch ./
-          #   patch -p1 < rm_devpt.patch
-          # fi
 
           FORMATTED_BRANCH="${{ inputs.android_version }}-${{ inputs.kernel_version }}"
           if grep -q deprecated <<< "$REMOTE_BRANCH" && \
@@ -683,12 +564,7 @@ jobs:
           echo "CONFIG_KSU_SUSFS=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_SUS_PATH=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_SUS_MOUNT=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS_SUS_KSTAT=y" >> ./common/arch/arm64/configs/gki_defconfig
-          
-          echo "CONFIG_KSU_SUSFS_TRY_UMOUNT=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_KSU_SUSFS_SUS_KSTAT=y" >> ./common/arch/arm64/configs/gki_defconfig        
           echo "CONFIG_KSU_SUSFS_SPOOF_UNAME=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_ENABLE_LOG=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y" >> ./common/arch/arm64/configs/gki_defconfig

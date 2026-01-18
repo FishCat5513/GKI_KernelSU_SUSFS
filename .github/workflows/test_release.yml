@@ -61,12 +61,6 @@ on:
         type: boolean
         default: false
 jobs:
-  get_manager:
-    uses: ./.github/workflows/get-manager.yml
-    secrets: inherit
-    with:
-      kernelsu_variant: ${{ inputs.kernelsu_variant }}
-
   build-kernel-a12-5-10:
     uses: ./.github/workflows/kernel-a12-5.10.yml
     secrets: inherit
@@ -80,17 +74,6 @@ jobs:
       use_bbg: ${{ inputs.use_bbg }}
       cancel_susfs: ${{ inputs.cancel_susfs }}
 
-  # build-kernel-a13-5-10:
-  #   uses: ./.github/workflows/kernel-a13-5.10.yml
-  #   secrets: inherit
-  #   with:
-  #     make_release: ${{ inputs.make_release }}
-  #     kernelsu_variant: ${{ inputs.kernelsu_variant }}
-  #     kernelsu_branch: ${{ inputs.kernelsu_branch }}
-  #     # kernelsu_branch_other: ${{ inputs.kernelsu_branch_other }}
-  #     version: ${{ inputs.version }}
-  #     use_zram: ${{ inputs.use_zram }}
-  #     use_kpm: ${{ inputs.use_kpm }}
 
   build-kernel-a13-5-15:
     uses: ./.github/workflows/kernel-a13-5.15.yml
@@ -105,17 +88,6 @@ jobs:
       use_bbg: ${{ inputs.use_bbg }}
       cancel_susfs: ${{ inputs.cancel_susfs }}
 
-  # build-kernel-a14-5-15:
-  #   uses: ./.github/workflows/kernel-a14-5.15.yml
-  #   secrets: inherit
-  #   with:
-  #     make_release: ${{ inputs.make_release }}
-  #     kernelsu_variant: ${{ inputs.kernelsu_variant }}
-  #     kernelsu_branch: ${{ inputs.kernelsu_branch }}
-  #     # kernelsu_branch_other: ${{ inputs.kernelsu_branch_other }}
-  #     version: ${{ inputs.version }}
-  #     use_zram: ${{ inputs.use_zram }}
-  #     use_kpm: ${{ inputs.use_kpm }}
 
   build-kernel-a14-6-1:
     uses: ./.github/workflows/kernel-a14-6.1.yml
@@ -149,7 +121,6 @@ jobs:
       contents: write
       actions: write
     needs:
-        - get_manager
         - build-kernel-a12-5-10
         # - build-kernel-a13-5-10
         - build-kernel-a13-5-15
@@ -161,16 +132,15 @@ jobs:
       REPO_NAME: GKI_KernelSU_SUSFS
       SUS_VERSION: ''
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      RELEASE_NAME: "GKI内核: ${{ inputs.kernelsu_variant == 'Next' && 'KernelSU-' || '' }}${{ inputs.kernelsu_variant }}(${{ needs.get_manager.outputs.ksuVer }})  & SUSFS ${{ needs.get_manager.outputs.susVer }}"
+      RELEASE_NAME: "GKI内核: ReSukiSU & SUSFS v2.0.0"
       RELEASE_NOTES: |
-        此处包含：**${{ inputs.kernelsu_variant == 'Next' && 'KernelSU-' || '' }}${{ inputs.kernelsu_variant }}**、SUSFS ${{ needs.get_manager.outputs.susVer }} ${{ inputs.use_zram && '、LZ4KD' || '' }}
+        此处包含：**ReSukiSU**、SUSFS 2.0.0
 
         功能:
-        -> ${{ inputs.kernelsu_variant == 'Next' && 'KernelSU-' || '' }}${{ inputs.kernelsu_variant }}${{ inputs.kernelsu_variant == 'Official' && '原版' || '' }}${{ inputs.kernelsu_branch == 'Dev(开发)' && format('({0})', needs.get_manager.outputs.ksuVer) || '稳定版' }}
-        -> SUSFS ඞ ${{ needs.get_manager.outputs.susVer }} ${{ inputs.kernelsu_variant != 'SukiSU' && '-> 移除' || '' }}
-        ${{ inputs.kernelsu_variant != 'SukiSU' && '-> KPROBE Hooks' || '-> SUSFS Inline Hooks' }}
-        ${{ inputs.kernelsu_variant != 'Official' && '-> Magic Mount 支持' || '-> OVERLAYFS 支持' }}
-        -> BBG安全补丁 ${{ inputs.use_bbg && '支持' || '不支持' }}
+        -> ReSukiSU
+        -> SUSFS2.0.0ඞ 
+        -> SUSFS Inline Hooks
+        -> MagicMount
         ${{ inputs.use_kpm && '-> KPM 支持' || '' }} | 若不支持可[手动修补](https://github.com/zzh20188/GKI_KernelSU_SUSFS/issues/132)
         -> **LZ4KD&ONEPLUS_LZ4K**  ${{ inputs.use_zram && '开启' || '未开启' }}
         -> lz4: v1.10.0 ${{ inputs.use_zram && '开启' || '未开启' }}
@@ -178,21 +148,6 @@ jobs:
         模块: 
         -> https://github.com/sidex15/ksu_module_susfs
         
-      RELEASE_NOTES_ENG: |
-        This version includes: **${{ inputs.kernelsu_variant == 'Next' && 'KernelSU-' || '' }}${{ inputs.kernelsu_variant }}**, SUSFS ${{ needs.get_manager.outputs.susVer }}${{ inputs.use_zram && ', LZ4KD' || '' }}
-
-        Features:
-        -> ${{ inputs.kernelsu_variant == 'Next' && 'KernelSU-' || '' }}${{ inputs.kernelsu_variant }}${{ inputs.kernelsu_variant == 'Official' && ' (Official)' || '' }}${{ inputs.kernelsu_branch == 'Dev(开发)' && format('({0})', needs.get_manager.outputs.ksuVer) || ' (Stable)' }}
-        -> SUSFS ඞ ${{ needs.get_manager.outputs.susVer }}
-        ${{ inputs.kernelsu_variant != 'SukiSU' && '-> KPROBE Hooks' || '-> SUSFS Inline Hooks' }}
-        ${{ inputs.kernelsu_variant != 'Official' && '-> Magic Mount Support' || '-> OVERLAYFS Support' }}
-        -> BBG Security Patch: ${{ inputs.use_bbg && 'Supported' || 'Not Supported' }}
-        ${{ inputs.use_kpm && '-> KPM Support' || '' }} | If not supported, [Manual Patching](https://github.com/zzh20188/GKI_KernelSU_SUSFS/issues/132) is available
-        -> **LZ4KD & ONEPLUS_LZ4K**: ${{ inputs.use_zram && 'Enabled' || 'Disabled' }}
-        -> lz4: v1.10.0: ${{ inputs.use_zram && 'Enabled' || 'Disabled' }}
-        -> Unicode Zero-Width Bypass Fix & Memory Optimization: Supported
-        Module: 
-        -> https://github.com/sidex15/ksu_module_susfs
 
         
     steps:
@@ -234,8 +189,8 @@ jobs:
             REPO_URL2="5ec1cff/KernelSU"
           elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ]; then
             echo "This is the SukiSU variant"
-            REPO_URL="https://github.com/SukiSU-Ultra/SukiSU-Ultra.git"
-            REPO_URL2="SukiSU-Ultra/SukiSU-Ultra"
+            REPO_URL="https://github.com/ReSukiSU/ReSukiSU.git"
+            REPO_URL2="ReSukiSU/ReSukiSU"
           else
             echo "Unknown variant"
           fi
@@ -324,7 +279,7 @@ jobs:
             echo "RELEASE_NOTES<<EOF" >> $GITHUB_ENV
             echo "$RELEASE_NOTES" >> $GITHUB_ENV
             echo "SukiSU 管理器:" >> $GITHUB_ENV
-            echo "-> https://github.com/SukiSU-Ultra/SukiSU-Ultra" >> $GITHUB_ENV
+            echo "-> https://github.com/ReSukiSU/ReSukiSU" >> $GITHUB_ENV
             echo "EOF" >> $GITHUB_ENV
           else
             echo "Unknown variant"
@@ -342,7 +297,7 @@ jobs:
           echo "<summary>提交信息</summary>" >> $GITHUB_ENV
           echo "" >> $GITHUB_ENV
           echo "提交的哈希值与链接(以下提交指的是,本次编译时,KSU或SUSFS所在的进度):" >> $GITHUB_ENV
-          echo "- **KernelSU为${{ inputs.kernelsu_variant == 'Next' && 'KernelSU-' || '' }}${{ inputs.kernelsu_variant }}${{ inputs.kernelsu_branch == 'Dev(开发)' && format('({0})', needs.get_manager.outputs.ksuVer) || '稳定版' }}** (提交): [$KSU_REF]($KSU_URL)" >> $GITHUB_ENV
+          echo "- **ReSukiSU**:" >> $GITHUB_ENV
           echo "- **SUSFS4KSU** (提交):" >> $GITHUB_ENV
           echo "  - gki-android12-5.10: [$COMMIT_HASH_gki_android12_5_10]($COMMIT_URL_gki_android12_5_10)" >> $GITHUB_ENV
           echo "  - gki-android13-5.10: [$COMMIT_HASH_gki_android13_5_10]($COMMIT_URL_gki_android13_5_10)" >> $GITHUB_ENV
@@ -362,7 +317,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
             # Fetch the latest tag from GitHub (this is the latest tag based on the GitHub API)
-            SUS_VERSION=${{ needs.get_manager.outputs.susVer }}
+            SUS_VERSION="v2.0.0"
             LATEST_TAG=$(gh api repos/$REPO_OWNER/$REPO_NAME/tags --jq '.[0].name'| sed 's/-.*//')
             echo $SUS_VERSION
             echo $LATEST_TAG
