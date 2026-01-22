@@ -758,12 +758,7 @@ jobs:
 
             kmi_66="-g${GHASH}-${BID}-4k"
             sed -i "/^CONFIG_LOCALVERSION=/ s/=\"[^\"]*\"/=\"${kmi_66}\"/" ./arch/arm64/configs/gki_defconfig 2>/dev/null || true
-          else
-            DIST=$(printf "%05d" $((RANDOM % 500 + 1)))
-            BID=$((RANDOM % 9000000 + 10000000))
-            echo "注入配置: DIST=$DIST, BID=$BID"                    
-            // perl -i -pe "s/echo \"\\\$res\"/echo \"\\\$res-ab$BID\"/g" ./common/scripts/setlocalversion
-            tail -n 2 ./common/scripts/setlocalversion
+          
           fi
           
 
