@@ -1,6 +1,9 @@
 # Claude Code
 .claude/
 
+# Development files
+hympfs-dev.diff
+
 # IDE & Editors
 .idea/
 .vscode/

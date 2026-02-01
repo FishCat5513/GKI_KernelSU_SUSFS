@@ -57,7 +57,10 @@ jobs:
           echo "======================================================="
           
       - name: 安装依赖
-        run: sudo apt install -y git curl jq
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: git curl jq
+          execute_install_scripts: true
 
       - name: 获取 KSU & SUSFS 版本
         id: get_version

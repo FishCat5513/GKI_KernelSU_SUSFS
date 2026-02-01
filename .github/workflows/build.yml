@@ -78,11 +78,6 @@ on:
         required: false
         type: boolean
         default: false
-      only_ak3:
-        description: "仅上传 AnyKernel3 压缩包"
-        required: false
-        type: boolean
-        default: false
 
 jobs:
   build-kernel:
@@ -181,11 +176,12 @@ jobs:
           fi
 
       # ==================== 安装编译依赖 ====================
-      # 安装内核编译所需的各种工具和库
+      # 安装内核编译所需的各种工具和库（使用 apt 缓存加速）
       - name: 安装编译依赖
-        run: |
-          sudo apt update && sudo apt upgrade -y
-          sudo apt install -y ccache python3 git curl build-essential libssl-dev bison flex libelf-dev dwarves
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: ccache python3 git curl build-essential libssl-dev bison flex libelf-dev dwarves
+          execute_install_scripts: true
 
       # ==================== 配置 ccache ====================
       # ccache 用于缓存编译结果，加速后续构建
@@ -453,25 +449,54 @@ jobs:
 
           # 应用主 SUSFS 补丁到内核
           cd $KERNEL_ROOT/common
-          patch -p1 --fuzz=3 < 50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch || true
 
-          # 应用版本特定修复 (Next 变体)
-          if [ "${{ inputs.ksu_variant }}" == "Next" ]; then
+          # Fake Patch 机制：为旧版本内核预先添加缺失的变量声明，使 SUSFS 补丁能正确应用
+          FAKE_PATCHED=0
+          GKI_V="${{ inputs.android_version }}-${{ inputs.kernel_version }}"
+
+          if [ "$GKI_V" = "android15-6.6" ]; then
+            if ! grep -qF 'unsigned int nr_subpages = __PAGE_SIZE / PAGE_SIZE;' ./fs/proc/task_mmu.c; then
+              echo "未找到 nr_subpages，正在进行补丁修复"
+              sed -i -e '/int ret = 0, copied = 0;/a \\tunsigned int nr_subpages = __PAGE_SIZE \/ PAGE_SIZE;' \
+                     -e '/int ret = 0, copied = 0;/a \\tpagemap_entry_t \*res = NULL;' ./fs/proc/task_mmu.c
+              FAKE_PATCHED=1
+            fi
+          fi
+
+          patch -p1 < 50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch || true
+
+          # Revert Fake Patch：删除预先添加的行（SUSFS 补丁会添加自己的）
+          if [ "$FAKE_PATCHED" = 1 ]; then
+            if [ "$GKI_V" = "android15-6.6" ]; then
+              if grep -qF 'unsigned int nr_subpages = __PAGE_SIZE / PAGE_SIZE;' ./fs/proc/task_mmu.c; then
+                sed -i -e '/unsigned int nr_subpages = __PAGE_SIZE \/ PAGE_SIZE;/d' \
+                       -e '/pagemap_entry_t \*res = NULL;/d' ./fs/proc/task_mmu.c
+              fi
+            fi
+          fi
+
+          # 应用版本特定修复 (Next/SukiSU 变体)
+          if [ "${{ inputs.ksu_variant }}" == "Next" ] || [ "${{ inputs.ksu_variant }}" == "SukiSU" ]; then
             CURRENT_SUB="${{ inputs.sub_level }}"
-            [[ ! "$CURRENT_SUB" =~ ^[0-9]+$ ]] && CURRENT_SUB=99999
+            if [[ ! "$CURRENT_SUB" =~ ^[0-9]+$ ]]; then
+              CURRENT_SUB=99999
+            fi
 
             # Android 12 - 5.10 修复
             if [[ "${{ inputs.android_version }}" == "android12" && "${{ inputs.kernel_version }}" == "5.10" ]]; then
-              [[ "$CURRENT_SUB" -le 209 ]] && sed -i -e 's/goto show_pad;/return 0;/' ./fs/proc/task_mmu.c
-              [[ "$CURRENT_SUB" -le 117 ]] && { cp $KERNEL_PATCHES/wild/susfs_fix_patches/v${SUSFS_VERSION}/a12-5.10/fdinfo.c.patch ./; patch -p1 < fdinfo.c.patch || true; }
-              [[ "$CURRENT_SUB" -le 43 ]] && { cp $KERNEL_PATCHES/wild/susfs_fix_patches/v${SUSFS_VERSION}/a12-5.10/base.c.patch ./; patch -p1 < base.c.patch || true; }
+              if [[ "$CURRENT_SUB" -le 209 ]]; then
+                sed -i -e 's/goto show_pad;/return 0;/' ./fs/proc/task_mmu.c
+              fi
+              if [[ "$CURRENT_SUB" -le 117 ]]; then
+                cp $KERNEL_PATCHES/wild/susfs_fix_patches/v${SUSFS_VERSION}/a12-5.10/fdinfo.c.patch ./
+                patch -p1 < fdinfo.c.patch || true
+              fi
+              if [[ "$CURRENT_SUB" -le 43 ]]; then
+                cp $KERNEL_PATCHES/wild/susfs_fix_patches/v${SUSFS_VERSION}/a12-5.10/base.c.patch ./
+                patch -p1 < base.c.patch || true
+              fi
             fi
 
-            # Android 13 - 5.10 修复
-            if [[ "${{ inputs.android_version }}" == "android13" && "${{ inputs.kernel_version }}" == "5.10" ]]; then
-              [[ "$CURRENT_SUB" -le 107 ]] && { cp $KERNEL_PATCHES/wild/susfs_fix_patches/v${SUSFS_VERSION}/a13-5.10/fdinfo.c.patch ./; patch -p1 < fdinfo.c.patch || true; }
-              [[ "$CURRENT_SUB" -le 209 && "${{ inputs.os_patch_level }}" != "2024-05" ]] && sed -i -e 's/goto show_pad;/return 0;/' ./fs/proc/task_mmu.c
-            fi
 
             # Android 13 - 5.15 修复
             if [[ "${{ inputs.android_version }}" == "android13" && "${{ inputs.kernel_version }}" == "5.15" ]]; then
@@ -484,47 +509,27 @@ jobs:
                 patch -p1 < open.c.patch || true
                 sed -i 's|is_i_uid_not_allowed(i_uid_into_mnt(i_user_ns(inode), inode).val)))|is_i_uid_not_allowed(inode->i_uid.val)))|g' fs/susfs.c
               fi
-              [[ "$CURRENT_SUB" -le 148 && "${{ inputs.os_patch_level }}" != "2024-05" ]] && sed -i -e 's/goto show_pad;/return 0;/' ./fs/proc/task_mmu.c
+              if [[ "$CURRENT_SUB" -le 148 && "${{ inputs.os_patch_level }}" != "2024-05" ]]; then
+                sed -i -e 's/goto show_pad;/return 0;/' ./fs/proc/task_mmu.c
+              fi
             fi
 
             # Android 14 - 5.15 修复
             if [[ "${{ inputs.android_version }}" == "android14" && "${{ inputs.kernel_version }}" == "5.15" ]]; then
-              [[ "$CURRENT_SUB" -le 148 && "${{ inputs.os_patch_level }}" != "2024-05" ]] && sed -i -e 's/goto show_pad;/return 0;/' ./fs/proc/task_mmu.c
+              if [[ "$CURRENT_SUB" -le 148 && "${{ inputs.os_patch_level }}" != "2024-05" ]]; then
+                sed -i -e 's/goto show_pad;/return 0;/' ./fs/proc/task_mmu.c
+              fi
             fi
 
             # Android 14 - 6.1 修复
             if [[ "${{ inputs.android_version }}" == "android14" && "${{ inputs.kernel_version }}" == "6.1" ]]; then
-              [[ "$CURRENT_SUB" -ge 145 ]] && { cp $KERNEL_PATCHES/wild/susfs_fix_patches/v${SUSFS_VERSION}/a14-6.1/base.c.patch ./; patch -p1 < base.c.patch || true; }
-              [[ "$CURRENT_SUB" -le 75 && "${{ inputs.os_patch_level }}" != "2024-05" ]] && sed -i -e 's/goto show_pad;/return 0;/' ./fs/proc/task_mmu.c
-            fi
-
-            # Android 15 - 6.6 修复
-            if [[ "${{ inputs.android_version }}" == "android15" && "${{ inputs.kernel_version }}" == "6.6" ]]; then
-              [[ "$CURRENT_SUB" -ge 98 ]] && { cp $KERNEL_PATCHES/wild/susfs_fix_patches/v${SUSFS_VERSION}/a15-6.6/base.c.patch ./; patch -p1 < base.c.patch || true; }
-              [[ "$CURRENT_SUB" -le 58 ]] && { cp $KERNEL_PATCHES/wild/susfs_fix_patches/v${SUSFS_VERSION}/a15-6.6/task_mmu.c.patch ./; patch -p1 < task_mmu.c.patch || true; }
-            fi
-          fi
-
-      # ==================== 应用额外修复 ====================
-      # 非 Next 变体的额外兼容性修复
-      - name: 应用额外修复
-        if: inputs.enable_susfs && inputs.ksu_variant != 'Next'
-        working-directory: ${{ env.KERNEL_ROOT }}/common
-        run: |
-          FORMATTED_BRANCH="${{ inputs.android_version }}-${{ inputs.kernel_version }}"
-
-          # Android 15-6.6 修复
-          if [ "$FORMATTED_BRANCH" = "android15-6.6" ]; then
-            if ! grep -qxF $'\tunsigned int nr_subpages = __PAGE_SIZE / PAGE_SIZE;' ./fs/proc/task_mmu.c; then
-              sed -i -e '/int ret = 0, copied = 0;/a \\tunsigned int nr_subpages \= __PAGE_SIZE \/ PAGE_SIZE;' \
-                     -e '/int ret = 0, copied = 0;/a \\tpagemap_entry_t \*res = NULL;' ./fs/proc/task_mmu.c
-            fi
-          fi
-
-          # 旧版 5.x 内核修复
-          if [ "$FORMATTED_BRANCH" = "android12-5.10" ] || [ "$FORMATTED_BRANCH" = "android13-5.10" ] || [ "$FORMATTED_BRANCH" = "android13-5.15" ]; then
-            if grep -qxF $'\t\tgoto show_pad;' ./fs/proc/task_mmu.c; then
-              sed -i -e 's/goto show_pad;/return 0;/' ./fs/proc/task_mmu.c
+              if [[ "$CURRENT_SUB" -ge 145 ]]; then
+                cp $KERNEL_PATCHES/wild/susfs_fix_patches/v${SUSFS_VERSION}/a14-6.1/base.c.patch ./
+                patch -p1 < base.c.patch || true
+              fi
+              if [[ "$CURRENT_SUB" -le 75 && "${{ inputs.os_patch_level }}" != "2024-05" ]]; then
+                sed -i -e 's/goto show_pad;/return 0;/' ./fs/proc/task_mmu.c
+              fi
             fi
           fi
 
@@ -795,7 +800,6 @@ jobs:
 
       # ==================== 创建 AnyKernel3 压缩包 ====================
       - name: 创建 AnyKernel3 压缩包
-        if: ${{ !inputs.only_ak3 }}
         run: |
           cd $ANYKERNEL3
           ZIP_NAME="${{ inputs.android_version }}-${{ inputs.kernel_version }}.${{ inputs.sub_level }}-${{ inputs.os_patch_level }}-AnyKernel3.zip"
@@ -889,24 +893,14 @@ jobs:
             done
           fi
 
-      # ==================== 上传构建产物 (完整包) ====================
-      - name: 上传构建产物 (完整包)
-        if: "!inputs.only_ak3"
+      # ==================== 上传构建产物 ====================
+      - name: 上传构建产物
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.ksu_variant }}_kernel-${{ env.CONFIG }}
           path: |
             *AnyKernel3.zip
             *.img
-          compression-level: 9
-
-      # ==================== 上传构建产物 (仅 AK3) ====================
-      - name: 上传构建产物 (仅 AK3)
-        if: inputs.only_ak3
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ inputs.ksu_variant }}_kernel-${{ env.CONFIG }}-Anykernel3
-          path: ./AnyKernel3/*
           compression-level: 9
 
       # ==================== 上传补丁冲突文件 ====================
