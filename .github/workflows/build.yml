@@ -454,15 +454,25 @@ jobs:
           # 应用版本特定修复 (Next/SukiSU 变体)
           if [ "${{ inputs.ksu_variant }}" == "Next" ] || [ "${{ inputs.ksu_variant }}" == "SukiSU" ]; then
             CURRENT_SUB="${{ inputs.sub_level }}"
-            [[ ! "$CURRENT_SUB" =~ ^[0-9]+$ ]] && CURRENT_SUB=99999
+            if [[ ! "$CURRENT_SUB" =~ ^[0-9]+$ ]]; then
+              CURRENT_SUB=99999
+            fi
 
             # Android 12 - 5.10 修复
             if [[ "${{ inputs.android_version }}" == "android12" && "${{ inputs.kernel_version }}" == "5.10" ]]; then
-              [[ "$CURRENT_SUB" -le 209 ]] && sed -i -e 's/goto show_pad;/return 0;/' ./fs/proc/task_mmu.c
-              [[ "$CURRENT_SUB" -le 117 ]] && { cp $KERNEL_PATCHES/wild/susfs_fix_patches/v${SUSFS_VERSION}/a12-5.10/fdinfo.c.patch ./; patch -p1 < fdinfo.c.patch || true; }
-              [[ "$CURRENT_SUB" -le 43 ]] && { cp $KERNEL_PATCHES/wild/susfs_fix_patches/v${SUSFS_VERSION}/a12-5.10/base.c.patch ./; patch -p1 < base.c.patch || true; }
+              if [[ "$CURRENT_SUB" -le 209 ]]; then
+                sed -i -e 's/goto show_pad;/return 0;/' ./fs/proc/task_mmu.c
+              fi
+              if [[ "$CURRENT_SUB" -le 117 ]]; then
+                cp $KERNEL_PATCHES/wild/susfs_fix_patches/v${SUSFS_VERSION}/a12-5.10/fdinfo.c.patch ./
+                patch -p1 < fdinfo.c.patch || true
+              fi
+              if [[ "$CURRENT_SUB" -le 43 ]]; then
+                cp $KERNEL_PATCHES/wild/susfs_fix_patches/v${SUSFS_VERSION}/a12-5.10/base.c.patch ./
+                patch -p1 < base.c.patch || true
+              fi
             fi
-
+          
 
             # Android 13 - 5.15 修复
             if [[ "${{ inputs.android_version }}" == "android13" && "${{ inputs.kernel_version }}" == "5.15" ]]; then
@@ -475,24 +485,39 @@ jobs:
                 patch -p1 < open.c.patch || true
                 sed -i 's|is_i_uid_not_allowed(i_uid_into_mnt(i_user_ns(inode), inode).val)))|is_i_uid_not_allowed(inode->i_uid.val)))|g' fs/susfs.c
               fi
-              [[ "$CURRENT_SUB" -le 148 && "${{ inputs.os_patch_level }}" != "2024-05" ]] && sed -i -e 's/goto show_pad;/return 0;/' ./fs/proc/task_mmu.c
+              if [[ "$CURRENT_SUB" -le 148 && "${{ inputs.os_patch_level }}" != "2024-05" ]]; then
+                sed -i -e 's/goto show_pad;/return 0;/' ./fs/proc/task_mmu.c
+              fi
             fi
 
             # Android 14 - 5.15 修复
             if [[ "${{ inputs.android_version }}" == "android14" && "${{ inputs.kernel_version }}" == "5.15" ]]; then
-              [[ "$CURRENT_SUB" -le 148 && "${{ inputs.os_patch_level }}" != "2024-05" ]] && sed -i -e 's/goto show_pad;/return 0;/' ./fs/proc/task_mmu.c
+              if [[ "$CURRENT_SUB" -le 148 && "${{ inputs.os_patch_level }}" != "2024-05" ]]; then
+                sed -i -e 's/goto show_pad;/return 0;/' ./fs/proc/task_mmu.c
+              fi
             fi
 
             # Android 14 - 6.1 修复
             if [[ "${{ inputs.android_version }}" == "android14" && "${{ inputs.kernel_version }}" == "6.1" ]]; then
-              [[ "$CURRENT_SUB" -ge 145 ]] && { cp $KERNEL_PATCHES/wild/susfs_fix_patches/v${SUSFS_VERSION}/a14-6.1/base.c.patch ./; patch -p1 < base.c.patch || true; }
-              [[ "$CURRENT_SUB" -le 75 && "${{ inputs.os_patch_level }}" != "2024-05" ]] && sed -i -e 's/goto show_pad;/return 0;/' ./fs/proc/task_mmu.c
+              if [[ "$CURRENT_SUB" -ge 145 ]]; then
+                cp $KERNEL_PATCHES/wild/susfs_fix_patches/v${SUSFS_VERSION}/a14-6.1/base.c.patch ./
+                patch -p1 < base.c.patch || true
+              fi
+              if [[ "$CURRENT_SUB" -le 75 && "${{ inputs.os_patch_level }}" != "2024-05" ]]; then
+                sed -i -e 's/goto show_pad;/return 0;/' ./fs/proc/task_mmu.c
+              fi
             fi
 
             # Android 15 - 6.6 修复
             if [[ "${{ inputs.android_version }}" == "android15" && "${{ inputs.kernel_version }}" == "6.6" ]]; then
-              [[ "$CURRENT_SUB" -ge 98 ]] && { cp $KERNEL_PATCHES/wild/susfs_fix_patches/v${SUSFS_VERSION}/a15-6.6/base.c.patch ./; patch -p1 < base.c.patch || true; }
-              [[ "$CURRENT_SUB" -le 58 ]] && { cp $KERNEL_PATCHES/wild/susfs_fix_patches/v${SUSFS_VERSION}/a15-6.6/task_mmu.c.patch ./; patch -p1 < task_mmu.c.patch || true; }
+              if [[ "$CURRENT_SUB" -ge 98 ]]; then
+                cp $KERNEL_PATCHES/wild/susfs_fix_patches/v${SUSFS_VERSION}/a15-6.6/base.c.patch ./
+                patch -p1 < base.c.patch || true
+              fi
+              if [[ "$CURRENT_SUB" -le 58 ]]; then
+                cp $KERNEL_PATCHES/wild/susfs_fix_patches/v${SUSFS_VERSION}/a15-6.6/task_mmu.c.patch ./
+                patch -p1 < task_mmu.c.patch || true
+              fi
             fi
           fi
 
