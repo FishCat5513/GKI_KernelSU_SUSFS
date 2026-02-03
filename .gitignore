@@ -54,3 +54,6 @@ __pycache__/
 
 # Node.js (if any tooling)
 node_modules/
+
+# Git
+.gitignore
