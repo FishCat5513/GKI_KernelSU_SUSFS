@@ -67,8 +67,15 @@ Wiki 涵盖内容：
 - **🧩 [自定义构建新手指南](https://github.com/zzh20188/GKI_KernelSU_SUSFS/wiki/%E8%87%AA%E5%AE%9A%E4%B9%89%E6%9E%84%E5%BB%BA%E6%96%B0%E6%89%8B%E6%8C%87%E5%8D%97)** - 面向新手的自定义构建模板
 如何使用见以下视频
 
-> - https://raw.githubusercontent.com/zzh20188/GKI_KernelSU_SUSFS/HEAD/assets/eg1.mp4
-> - https://raw.githubusercontent.com/zzh20188/GKI_KernelSU_SUSFS/HEAD/assets/eg2.mp4
+https://github.com/user-attachments/assets/b71dcb0d-0fcc-4ade-a734-152ab4821bbd
+
+
+https://github.com/user-attachments/assets/fa60829d-dd51-420a-b55b-d01e521c739d
+
+
+
+
+
 
 谷歌GKI发布地址：https://source.android.com/docs/core/architecture/kernel/gki-release-builds?hl=zh-cn
 
