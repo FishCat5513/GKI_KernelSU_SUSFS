@@ -2,120 +2,71 @@
 
 # GKI KernelSU SUSFS
 
-**Automated GKI Kernel Builds | KernelSU + SUSFS Integration**
+**Happy Lunar New Year! 🧨🧧**
 
-[![GitHub Stars](https://img.shields.io/github/stars/zzh20188/GKI_KernelSU_SUSFS?style=for-the-badge&logo=github&color=yellow)](https://github.com/zzh20188/GKI_KernelSU_SUSFS/stargazers)
-[![GitHub Forks](https://img.shields.io/github/forks/zzh20188/GKI_KernelSU_SUSFS?style=for-the-badge&logo=github&color=blue)](https://github.com/zzh20188/GKI_KernelSU_SUSFS/network/members)
+Automated GKI kernel builds with KernelSU + SUSFS.
+
 [![GitHub Release](https://img.shields.io/github/v/release/zzh20188/GKI_KernelSU_SUSFS?style=for-the-badge&logo=android&color=green)](https://github.com/zzh20188/GKI_KernelSU_SUSFS/releases)
-[![GitHub Actions](https://img.shields.io/github/actions/workflow/status/zzh20188/GKI_KernelSU_SUSFS/gki-kernel.yml?style=for-the-badge&logo=github-actions&label=Build)](https://github.com/zzh20188/GKI_KernelSU_SUSFS/actions)
+[![KernelSU](https://img.shields.io/badge/KernelSU-Supported-green)](https://kernelsu.org/)
+[![SUSFS](https://img.shields.io/badge/SUSFS-Integrated-orange)](https://gitlab.com/simonpunk/susfs4ksu)
 
 English | [**简体中文**](README.md)
 
----
-
 </div>
 
-## 🚀 Quick Navigation
-
-<table>
-<tr>
-<td align="center" width="33%">
-
-**📖 Docs**
-
-[GitHub Wiki](https://github.com/zzh20188/GKI_KernelSU_SUSFS/wiki)
-
-</td>
-<td align="center" width="33%">
-
-**📥 Download**
-
-[Releases](https://github.com/zzh20188/GKI_KernelSU_SUSFS/releases)
-
-</td>
-<td align="center" width="33%">
-
-**📋 Changelog**
-
-[CHANGELOG](doc/CHANGELOG-EN.md)
-
-</td>
-</tr>
-</table>
-
 ---
 
-## ⚠️ Compatibility Notice
+## Quick Links
+- Docs: <https://github.com/zzh20188/GKI_KernelSU_SUSFS/wiki>
+- Downloads: <https://github.com/zzh20188/GKI_KernelSU_SUSFS/releases>
+- Changelog: [`doc/CHANGELOG-EN.md`](doc/CHANGELOG-EN.md)
 
-> **Note:** Not supported on OnePlus ColorOS 14/15. You may need to wipe data after flashing.
+## Compatibility Notice
+> OnePlus ColorOS 14/15 is currently not supported. A data wipe may be required after flashing.
 
----
+## Special Editions
+- `hymo+gki` (6.6): <https://github.com/zzh20188/GKI_KernelSU_SUSFS/releases/tag/v2.0.0-r24>
+- `resukisu+gki`: <https://github.com/zzh20188/GKI_KernelSU_SUSFS/releases/tag/v2.0.0-r26>
 
-## ✨ Special Editions
+> Prebuilt releases already include the zero-width fix. You can also use the [Unicode zero-width fix module](https://t.me/real5ec1cff/268).
 
-| Edition | Description | Download |
-|:---:|:---|:---:|
-| **hymo+gki** | Integrated [hymo mount meta-module](https://github.com/Anatdx/hymo) (6.6 only) | [Release v2.0.0-r24](https://github.com/zzh20188/GKI_KernelSU_SUSFS/releases/tag/v2.0.0-r24) |
-| **resukisu+gki** | Integrated [ReSukisu](https://github.com/ReSukiSU/ReSukiSU) | [Release v2.0.0-r26](https://github.com/zzh20188/GKI_KernelSU_SUSFS/releases/tag/v2.0.0-r26) |
+## Common Build Failure Cause
+Even during holiday rush, this is still the #1 issue: SukiSU and SUSFS update out of sync.
 
-> 💡 Prebuilt versions include the zero-width fix patch. Alternatively, use the [Unicode zero-width fix module](https://t.me/real5ec1cff/268) (Xposed)
+- SukiSU builtin: <https://github.com/SukiSU-Ultra/SukiSU-Ultra/tree/builtin>
+- SUSFS 6.1 branch: <https://gitlab.com/simonpunk/susfs4ksu/-/tree/gki-android14-6.1?ref_type=heads>
 
----
+What to do: wait for upstream adaptation, or pin working commits manually.
 
-## 📚 Documentation & Guides
+## Custom Commit Pinning (Recommended)
+Use [`config/config`](config/config) to pin SUSFS / SukiSU commits when upstream is temporarily incompatible.
 
-For detailed instructions, please refer to the [**GitHub Wiki (Bilingual)**](https://github.com/zzh20188/GKI_KernelSU_SUSFS/wiki)
+```ini
+custom=true
 
-Wiki Contents:
-- 📥 Download & Flash Guide
-- 🔄 Bootloop Recovery
-- 🐛 Bug Reporting Guidelines
-- 💡 Tips & Tricks
-- 📱 KSU Manager & SUSFS Module
-- ⏰ Kernel Build Time Info
-- 🆘 Emergency Rescue Guide
-- 📊 Kernel Version Compatibility
+gki-android12-5.10=
+gki-android13-5.15=
+gki-android14-6.1=
+gki-android15-6.6=
 
----
+sukisu=
+```
 
-## 🛠️ Post-Installation Recommendations
+- Empty value = use latest commit of that branch
+- SUSFS commits: <https://gitlab.com/simonpunk/susfs4ksu>
+- SukiSU commits: <https://github.com/SukiSU-Ultra/SukiSU-Ultra/commits/builtin/>
 
-### 📦 Recommended Modules
-
-<table>
-<tr>
-<th>Module</th>
-<th>Repository</th>
-<th>Channel</th>
-</tr>
-<tr>
-<td><b>LSPosed-Irena</b></td>
-<td><a href="https://github.com/re-zero001/LSPosed-Irena">GitHub</a></td>
-<td><a href="https://t.me/lsposed_irena">Telegram</a></td>
-</tr>
-<tr>
-<td><b>Zygisk Next</b></td>
-<td><a href="https://github.com/Dr-TSNG/ZygiskNext">GitHub</a></td>
-<td rowspan="2"><a href="https://t.me/real5ec1cff">Telegram</a></td>
-</tr>
-<tr>
-<td><b>TrickyStore</b></td>
-<td><a href="https://github.com/5ec1cff/TrickyStore">GitHub</a></td>
-</tr>
-</table>
-
-### 🔧 Xposed Modules
-
-| Module | Description |
-|:---:|:---|
-| **FuseFixer** | [Unicode zero-width fix module](https://t.me/real5ec1cff/268) |
+## Recommended Modules
+- LSPosed-Irena: <https://github.com/re-zero001/LSPosed-Irena>
+- Zygisk Next: <https://github.com/Dr-TSNG/ZygiskNext>
+- TrickyStore: <https://github.com/5ec1cff/TrickyStore>
 
 ---
 
 <div align="center">
 
-**More content coming soon...**
+Wishing you a smooth year: one-pass builds, clean boots, green logs. 🎉
 
-⭐ If this project helps you, please give it a Star!
+⭐ If this project helps, please give it a Star.
 
 </div>

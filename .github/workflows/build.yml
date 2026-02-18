@@ -43,6 +43,10 @@ on:
       revision:
         required: false
         type: string
+      build_time:
+        required: false
+        type: string
+        default: "Sun Dec 01 08:10:00 UTC 2024"
 
       # ==================== 功能开关 ====================
       use_zram:
@@ -93,6 +97,7 @@ jobs:
           echo "补丁级别      : ${{ inputs.os_patch_level }}"
           echo "KSU 变体      : ${{ inputs.ksu_variant }}"
           echo "KSU 分支      : ${{ inputs.ksu_branch }}"
+          echo "构建时间      : ${{ inputs.build_time }}"
           echo "SUSFS 状态    : ${{ inputs.enable_susfs }}"
           echo "ZRAM 增强     : ${{ inputs.use_zram }}"
           echo "BBG 补丁      : ${{ inputs.use_bbg }}"
@@ -783,6 +788,37 @@ jobs:
             sed -i "\$s|echo \"\$res\"|echo \"$kmi_61\"|" ./scripts/setlocalversion 2>/dev/null || true
             kmi_66="-g${GHASH}-${BID}-4k"
             sed -i "/^CONFIG_LOCALVERSION=/ s/=\"[^\"]*\"/=\"${kmi_66}\"/" ./arch/arm64/configs/gki_defconfig 2>/dev/null || true
+          fi
+
+      # ==================== 自定义构建时间 ====================
+      - name: 设置自定义构建时间
+        shell: bash
+        run: |
+          # 读取输入：输入 N/n 或留空时，使用当前 UTC 时间
+          INPUT_TIME="${{ inputs.build_time }}"
+          if [[ -n "$INPUT_TIME" && "$INPUT_TIME" != "N" && "$INPUT_TIME" != "n" ]]; then
+            DATESTR="$INPUT_TIME"
+            echo "使用输入的构建时间: $DATESTR"
+          else
+            DATESTR="$(TZ='UTC' date +'%a %b %d %T %Z %Y')"
+            echo "使用当前 UTC 时间: $DATESTR"
+          fi
+
+          # 导出给后续编译流程
+          echo "KBUILD_BUILD_TIMESTAMP=$DATESTR" >> "$GITHUB_ENV"
+          echo "KBUILD_BUILD_VERSION=1" >> "$GITHUB_ENV"
+
+          # 固定只处理 common/scripts/mkcompile_h
+          f="$KERNEL_ROOT/common/scripts/mkcompile_h"
+          if [ -f "$f" ]; then
+            echo "写入 mkcompile_h 构建时间: $DATESTR"
+            if grep -q 'UTS_VERSION=' "$f"; then
+              perl -pi -e "s{UTS_VERSION=\"\\\$\\(.*?\\)\"}{UTS_VERSION=\"#1 SMP PREEMPT $DATESTR\"}" "$f"
+            else
+              perl -0777 -pi -e "s{cat <<EOF}{cat <<EOF\n#undef UTS_VERSION\n#define UTS_VERSION \"#1 SMP PREEMPT $DATESTR\" } unless /UTS_VERSION/" "$f"
+            fi
+          else
+            echo "未找到目标文件，跳过: $f"
           fi
 
       # ==================== 编译内核 ====================
