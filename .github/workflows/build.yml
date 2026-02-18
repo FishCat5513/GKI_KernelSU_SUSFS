@@ -102,6 +102,7 @@ jobs:
           echo "ZRAM 增强     : ${{ inputs.use_zram }}"
           echo "BBG 补丁      : ${{ inputs.use_bbg }}"
           echo "KPM 功能      : ${{ inputs.use_kpm }}"
+          echo "Stock Config  : 自动检测 config/stock_defconfig"
           echo "========================================"
 
       # ==================== 清理磁盘空间 ====================
@@ -299,6 +300,43 @@ jobs:
 
           $REPO --trace sync -c -j$(nproc --all) --no-tags --fail-fast
           echo "REMOTE_BRANCH=$REMOTE_BRANCH" >> $GITHUB_ENV
+
+      # ==================== 伪装 /proc/config.gz（自动检测） ====================
+      # 若仓库存在 config/stock_defconfig，则自动应用；不存在则跳过
+      - name: 应用 Stock Config 伪装
+        run: |
+          STOCK_SRC="$GITHUB_WORKSPACE/config/stock_defconfig"
+          STOCK_DST="$KERNEL_ROOT/common/arch/arm64/configs/stock_defconfig"
+
+          if [ ! -f "$STOCK_SRC" ]; then
+            echo "未检测到 $STOCK_SRC，跳过 Stock Config 伪装。"
+            exit 0
+          fi
+
+          cp "$STOCK_SRC" "$STOCK_DST"
+          echo "已复制 stock_defconfig -> $STOCK_DST"
+
+          if [ -f "$KERNEL_ROOT/kernel/Makefile" ]; then
+            TARGET_MAKEFILE="$KERNEL_ROOT/kernel/Makefile"
+          elif [ -f "$KERNEL_ROOT/common/Makefile" ]; then
+            TARGET_MAKEFILE="$KERNEL_ROOT/common/Makefile"
+          else
+            echo "::error::未找到 kernel/Makefile 或 common/Makefile。"
+            exit 1
+          fi
+
+          NEW_RULE='$(obj)/config_data: arch/arm64/configs/stock_defconfig FORCE'
+          OLD_RULE='$(obj)/config_data: $(KCONFIG_CONFIG) FORCE'
+
+          if grep -qF "$NEW_RULE" "$TARGET_MAKEFILE"; then
+            echo "config_data 规则已是 stock_defconfig，跳过。"
+          elif grep -qF "$OLD_RULE" "$TARGET_MAKEFILE"; then
+            sed -i 's|\$(obj)/config_data: \$(KCONFIG_CONFIG) FORCE|$(obj)/config_data: arch/arm64/configs/stock_defconfig FORCE|' "$TARGET_MAKEFILE"
+            echo "已替换 config_data 规则: $TARGET_MAKEFILE"
+          else
+            echo "::error::未在 $TARGET_MAKEFILE 找到规则: $OLD_RULE"
+            exit 1
+          fi
 
       # ==================== 提取实际子版本号 ====================
       # 从 Makefile 中读取真实的 SUBLEVEL 值

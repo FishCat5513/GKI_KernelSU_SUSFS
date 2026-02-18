@@ -135,6 +135,22 @@ sukisu=
 
 ---
 
+## 🧪 伪装 `/proc/config.gz`（Stock Config）
+
+这是一个进阶技巧，不需要在工作流里手动开关。  
+构建时会自动检测 `config/stock_defconfig` 是否存在：存在则应用，不存在则跳过。
+
+使用方法：
+1. 确保设备当前是官方 ROM + 官方内核。
+2. 获取设备上的 `/proc/config.gz`（可在手机端或电脑端操作）。
+3. 解压后重命名为 `stock_defconfig`，上传到仓库 `config/` 目录并提交（可直接在手机端完成）。
+
+构建流程会自动：
+- 复制到内核源码：`$KERNEL_ROOT/common/arch/arm64/configs/stock_defconfig`
+- 将 Makefile 规则从 `$(KCONFIG_CONFIG)` 切换为 `stock_defconfig`
+- 使编译产物中的 `/proc/config.gz` 更贴近你的官方内核配置
+---
+
 ## 🛠️ 安装后推荐
 
 ### 📦 模块推荐

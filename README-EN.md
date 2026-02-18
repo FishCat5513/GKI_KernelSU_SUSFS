@@ -56,6 +56,19 @@ sukisu=
 - SUSFS commits: <https://gitlab.com/simonpunk/susfs4ksu>
 - SukiSU commits: <https://github.com/SukiSU-Ultra/SukiSU-Ultra/commits/builtin/>
 
+## Spoof `/proc/config.gz` (Stock Config)
+This is an advanced trick and requires no workflow toggle.
+Build now auto-detects `config/stock_defconfig`: if present, it is applied; if absent, it is skipped.
+
+1. Make sure your device is running stock ROM + stock kernel.
+2. Obtain `/proc/config.gz` from your device (phone-side or PC-side workflow both work).
+3. Decompress it, rename it to `stock_defconfig`, upload it to `config/` in your repo, and commit (can be done directly on phone).
+
+During build, workflow will automatically:
+- copy it to `$KERNEL_ROOT/common/arch/arm64/configs/stock_defconfig`
+- switch Makefile `config_data` rule from `$(KCONFIG_CONFIG)` to `stock_defconfig`
+- make `/proc/config.gz` in the built kernel closer to your stock kernel config
+
 ## Recommended Modules
 - LSPosed-Irena: <https://github.com/re-zero001/LSPosed-Irena>
 - Zygisk Next: <https://github.com/Dr-TSNG/ZygiskNext>
