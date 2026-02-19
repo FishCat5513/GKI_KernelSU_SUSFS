@@ -143,7 +143,7 @@ sukisu=
 使用方法：
 1. 确保设备当前是官方 ROM + 官方内核。
 2. 获取设备上的 `/proc/config.gz`（可在手机端或电脑端操作）。
-3. 解压后重命名为 `stock_defconfig`，上传到仓库 `config/` 目录并提交（可直接在手机端完成）。
+3. 解压后重命名为 `stock_defconfig`，上传到仓库 [`config/config`](config/config) 目录并提交（可直接在手机端完成）。
 
 构建流程会自动：
 - 复制到内核源码：`$KERNEL_ROOT/common/arch/arm64/configs/stock_defconfig`

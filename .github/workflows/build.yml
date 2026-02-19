@@ -143,7 +143,7 @@ jobs:
           SUSFS4KSU=$GITHUB_WORKSPACE/susfs4ksu
           KERNEL_PATCHES=$GITHUB_WORKSPACE/kernel_patches
           SUKISU_PATCHES=$GITHUB_WORKSPACE/SukiSU_patch
-          ZZH_PATCHES=$GITHUB_WORKSPACE/zzh_patch
+          ZZH_PATCHES=$GITHUB_WORKSPACE
           ANYKERNEL3=$GITHUB_WORKSPACE/AnyKernel3
           ACTION_BUILD=$GITHUB_WORKSPACE/Action-Build
           AVBTOOL=$GITHUB_WORKSPACE/kernel-build-tools/linux-x86/bin/avbtool
@@ -270,10 +270,10 @@ jobs:
           echo "SUSFS_LATEST_COMMIT_DATE=$SUSFS_LATEST_COMMIT_DATE" >> $GITHUB_ENV
           echo "SUSFS 仓库最新提交日期: $SUSFS_LATEST_COMMIT_DATE"
 
-          echo "克隆补丁仓库..."
+          echo "准备补丁资源..."
           git clone https://github.com/WildKernels/kernel_patches.git
           git clone https://github.com/ShirkNeko/SukiSU_patch.git
-          git clone https://github.com/zzh20188/GKI_KernelSU_SUSFS.git zzh_patch
+          echo "使用当前仓库补丁目录: $ZZH_PATCHES"
           git clone https://github.com/Numbersf/Action-Build.git --depth=1
 
       # ==================== 初始化并同步内核源码 ====================
@@ -327,26 +327,6 @@ jobs:
           NEW_RULE='$(obj)/config_data: arch/arm64/configs/stock_defconfig FORCE'
           OLD_RULE='$(obj)/config_data: $(KCONFIG_CONFIG) FORCE'
           TARGET_MAKEFILE="$KERNEL_ROOT/common/kernel/Makefile"
-
-          # 调试信息：展开相关目录并确认目标 Makefile 是否存在
-          echo "::group::调试: Makefile 路径检查"
-          echo "KERNEL_ROOT=$KERNEL_ROOT"
-          if [ -d "$KERNEL_ROOT/common" ]; then
-            ls -la "$KERNEL_ROOT/common" | head -n 120
-          else
-            echo "目录不存在: $KERNEL_ROOT/common"
-          fi
-          if [ -d "$KERNEL_ROOT/common/kernel" ]; then
-            ls -la "$KERNEL_ROOT/common/kernel" | head -n 120
-          else
-            echo "目录不存在: $KERNEL_ROOT/common/kernel"
-          fi
-          if [ -f "$TARGET_MAKEFILE" ]; then
-            echo "[FOUND] $TARGET_MAKEFILE"
-          else
-            echo "[MISS ] $TARGET_MAKEFILE"
-          fi
-          echo "::endgroup::"
 
           # 未找到目标 Makefile 直接失败，防止误改其它文件
           if [ ! -f "$TARGET_MAKEFILE" ]; then
@@ -666,31 +646,26 @@ jobs:
             patch -p1 --forward < "$ACTION_BUILD/patches/unicode_bypass_fix_6.1+.patch" || true
           fi
 
-      # ==================== 升级 LZ4 到 1.10.0 ====================
-      # 更新 LZ4 压缩库到最新版本
-      - name: 升级 LZ4 到 1.10.0
+      # ==================== 升级 LZ4 并应用 LZ4KD/LZ4K_OPLUS 补丁 ====================
+      # 统一处理 ZRAM 相关的 LZ4 变更，减少重复 step
+      - name: 配置 ZRAM LZ4 补丁栈
         if: inputs.use_zram
         working-directory: ${{ env.KERNEL_ROOT }}/common
         run: |
+          # 第一阶段：升级 LZ4 到 1.10.0
           echo "升级 LZ4..."
           rm -f lib/lz4/lz4_compress.c lib/lz4/lz4_decompress.c lib/lz4/lz4defs.h lib/lz4/lz4hc_compress.c
 
           cp -r $ZZH_PATCHES/zram/lz4/* ./lib/lz4/
           cp -r $ZZH_PATCHES/zram/include/linux/* ./include/linux/
           cp $ZZH_PATCHES/zram/${{ inputs.kernel_version }}/lz4_1.10.0.patch ./
-
           patch -p1 -F 3 --fuzz=5 < lz4_1.10.0.patch || true
 
           if [ -f "fs/f2fs/Makefile" ] && ! grep -qF "f2fs-\$(CONFIG_F2FS_IOSTAT) += iostat.o" "fs/f2fs/Makefile"; then
             echo "f2fs-\$(CONFIG_F2FS_IOSTAT) += iostat.o" >> "fs/f2fs/Makefile"
           fi
 
-      # ==================== 应用 LZ4KD 和 LZ4K_OPLUS 补丁 ====================
-      # 添加额外的 ZRAM 压缩算法支持
-      - name: 应用 LZ4KD 和 LZ4K_OPLUS 补丁
-        if: inputs.use_zram
-        working-directory: ${{ env.KERNEL_ROOT }}/common
-        run: |
+          # 第二阶段：应用 LZ4KD 和 LZ4K_OPLUS 补丁
           cp -r $SUKISU_PATCHES/other/zram/lz4k/include/linux/* ./include/linux/
           cp -r $SUKISU_PATCHES/other/zram/lz4k/lib/* ./lib/
           cp -r $SUKISU_PATCHES/other/zram/lz4k/crypto/* ./crypto/
@@ -702,32 +677,58 @@ jobs:
           cp $SUKISU_PATCHES/other/zram/zram_patch/${{ inputs.kernel_version }}/lz4k_oplus.patch ./
           patch -p1 -F 3 < lz4k_oplus.patch || true
 
-      # ==================== 修复三星 6.6 WiFi/蓝牙 ====================
-      # 添加三星设备所需的 KDP 符号
-      - name: 修复三星 6.6 WiFi/蓝牙
+      # ==================== 修复 6.6 WiFi/蓝牙兼容性（三星 + 小米） ====================
+      # 合并三星与小米修复，并采用幂等写法避免重复追加导致脏变更
+      - name: 修复 6.6 WiFi/蓝牙兼容性（三星 + 小米）
         if: inputs.kernel_version == '6.6'
         working-directory: ${{ env.KERNEL_ROOT }}/common
         run: |
-          SYMBOL_LIST=android/abi_gki_aarch64_galaxy
-          echo "kdp_set_cred_non_rcu" >> $SYMBOL_LIST
-          echo "kdp_usecount_dec_and_test" >> $SYMBOL_LIST
-          echo "kdp_usecount_inc" >> $SYMBOL_LIST
+          # 仅在行不存在时追加，避免重复执行污染文件
+          ensure_line_once() {
+            local file="$1"
+            local line="$2"
+            if [ ! -f "$file" ]; then
+              echo "::error::文件不存在: $file"
+              exit 1
+            fi
+            if ! grep -qF "$line" "$file"; then
+              echo "$line" >> "$file"
+            fi
+          }
 
-          PATCH="$KERNEL_PATCHES/samsung/min_kdp/add-min_kdp-symbols.patch"
-          if patch -p1 --dry-run < "$PATCH"; then
-            patch -p1 --no-backup-if-mismatch < "$PATCH"
+          GALAXY_SYMBOL_LIST="android/abi_gki_aarch64_galaxy"
+          XIAOMI_SYMBOL_LIST="android/abi_gki_aarch64_xiaomi"
+          DRIVERS_MAKEFILE="drivers/Makefile"
+          MIN_KDP_SRC="$KERNEL_PATCHES/samsung/min_kdp/min_kdp.c"
+          MIN_KDP_PATCH="$KERNEL_PATCHES/samsung/min_kdp/add-min_kdp-symbols.patch"
+          MIN_KDP_DST="drivers/min_kdp.c"
+
+          # 三星：补充 KDP 符号（幂等）
+          ensure_line_once "$GALAXY_SYMBOL_LIST" "kdp_set_cred_non_rcu"
+          ensure_line_once "$GALAXY_SYMBOL_LIST" "kdp_usecount_dec_and_test"
+          ensure_line_once "$GALAXY_SYMBOL_LIST" "kdp_usecount_inc"
+
+          # 三星：仅在可应用时打补丁，已应用/不匹配则跳过
+          if [ ! -f "$MIN_KDP_PATCH" ]; then
+            echo "::error::补丁不存在: $MIN_KDP_PATCH"
+            exit 1
+          fi
+          if patch -p1 --dry-run < "$MIN_KDP_PATCH" >/dev/null 2>&1; then
+            patch -p1 --no-backup-if-mismatch < "$MIN_KDP_PATCH"
+          else
+            echo "min_kdp symbols patch 已应用或当前上下文不匹配，跳过。"
           fi
 
-          cp "$KERNEL_PATCHES/samsung/min_kdp/min_kdp.c" drivers/min_kdp.c
-          echo "obj-y += min_kdp.o" >> drivers/Makefile
+          # 三星：复制驱动源码并确保 Makefile 仅追加一次
+          if [ ! -f "$MIN_KDP_SRC" ]; then
+            echo "::error::文件不存在: $MIN_KDP_SRC"
+            exit 1
+          fi
+          cp "$MIN_KDP_SRC" "$MIN_KDP_DST"
+          ensure_line_once "$DRIVERS_MAKEFILE" "obj-y += min_kdp.o"
 
-      # ==================== 修复小米 6.6 WiFi/蓝牙 ====================
-      # 添加小米设备所需的符号
-      - name: 修复小米 6.6 WiFi/蓝牙
-        if: inputs.kernel_version == '6.6'
-        working-directory: ${{ env.KERNEL_ROOT }}/common
-        run: |
-          echo "device_find_any_child" >> android/abi_gki_aarch64_xiaomi
+          # 小米：补充符号（幂等）
+          ensure_line_once "$XIAOMI_SYMBOL_LIST" "device_find_any_child"
 
       # ==================== 配置 ZRAM 选项 ====================
       # 启用各种 ZRAM 压缩算法
