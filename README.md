@@ -20,25 +20,18 @@
 
 <table>
 <tr>
-<td align="center" width="33%">
+<td align="center" width="50%">
 
 **📖 文档**
 
 [GitHub Wiki](https://github.com/zzh20188/GKI_KernelSU_SUSFS/wiki)
 
 </td>
-<td align="center" width="33%">
+<td align="center" width="50%">
 
 **📥 下载**
 
 [Releases](https://github.com/zzh20188/GKI_KernelSU_SUSFS/releases)
-
-</td>
-<td align="center" width="33%">
-
-**📋 更新日志**
-
-[CHANGELOG](doc/CHANGELOG.md)
 
 </td>
 </tr>
@@ -143,7 +136,7 @@ sukisu=
 使用方法：
 1. 确保设备当前是官方 ROM + 官方内核。
 2. 获取设备上的 `/proc/config.gz`（可在手机端或电脑端操作）。
-3. 解压后重命名为 `stock_defconfig`，上传到仓库 [`config/config`](config/config) 目录并提交（可直接在手机端完成）。
+3. 解压后重命名为 `stock_defconfig`，上传到仓库 [`config/`](config/) 目录并提交（可直接在手机端完成）。
 
 构建流程会自动：
 - 复制到内核源码：`$KERNEL_ROOT/common/arch/arm64/configs/stock_defconfig`
