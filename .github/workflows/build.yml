@@ -305,29 +305,56 @@ jobs:
       # 若仓库存在 config/stock_defconfig，则自动应用；不存在则跳过
       - name: 应用 Stock Config 伪装
         run: |
+          # 仓库内的 stock_defconfig 来源与内核源码目标路径
           STOCK_SRC="$GITHUB_WORKSPACE/config/stock_defconfig"
           STOCK_DST="$KERNEL_ROOT/common/arch/arm64/configs/stock_defconfig"
 
+          # 未提供 stock_defconfig 时直接跳过，不影响主流程
           if [ ! -f "$STOCK_SRC" ]; then
             echo "未检测到 $STOCK_SRC，跳过 Stock Config 伪装。"
             exit 0
           fi
 
-          cp "$STOCK_SRC" "$STOCK_DST"
+          # 提前确保目标目录存在，避免 cp 因目录缺失失败
+          mkdir -p "$(dirname "$STOCK_DST")"
+          if ! cp "$STOCK_SRC" "$STOCK_DST"; then
+            echo "::error::复制 stock_defconfig 失败: $STOCK_SRC -> $STOCK_DST"
+            exit 1
+          fi
           echo "已复制 stock_defconfig -> $STOCK_DST"
 
-          if [ -f "$KERNEL_ROOT/kernel/Makefile" ]; then
-            TARGET_MAKEFILE="$KERNEL_ROOT/kernel/Makefile"
-          elif [ -f "$KERNEL_ROOT/common/Makefile" ]; then
-            TARGET_MAKEFILE="$KERNEL_ROOT/common/Makefile"
+          # 规则替换目标：固定为 common/kernel/Makefile（与当前目录结构一致）
+          NEW_RULE='$(obj)/config_data: arch/arm64/configs/stock_defconfig FORCE'
+          OLD_RULE='$(obj)/config_data: $(KCONFIG_CONFIG) FORCE'
+          TARGET_MAKEFILE="$KERNEL_ROOT/common/kernel/Makefile"
+
+          # 调试信息：展开相关目录并确认目标 Makefile 是否存在
+          echo "::group::调试: Makefile 路径检查"
+          echo "KERNEL_ROOT=$KERNEL_ROOT"
+          if [ -d "$KERNEL_ROOT/common" ]; then
+            ls -la "$KERNEL_ROOT/common" | head -n 120
           else
-            echo "::error::未找到 kernel/Makefile 或 common/Makefile。"
+            echo "目录不存在: $KERNEL_ROOT/common"
+          fi
+          if [ -d "$KERNEL_ROOT/common/kernel" ]; then
+            ls -la "$KERNEL_ROOT/common/kernel" | head -n 120
+          else
+            echo "目录不存在: $KERNEL_ROOT/common/kernel"
+          fi
+          if [ -f "$TARGET_MAKEFILE" ]; then
+            echo "[FOUND] $TARGET_MAKEFILE"
+          else
+            echo "[MISS ] $TARGET_MAKEFILE"
+          fi
+          echo "::endgroup::"
+
+          # 未找到目标 Makefile 直接失败，防止误改其它文件
+          if [ ! -f "$TARGET_MAKEFILE" ]; then
+            echo "::error::未找到 $TARGET_MAKEFILE"
             exit 1
           fi
 
-          NEW_RULE='$(obj)/config_data: arch/arm64/configs/stock_defconfig FORCE'
-          OLD_RULE='$(obj)/config_data: $(KCONFIG_CONFIG) FORCE'
-
+          # 仅允许两种状态：已是新规则 / 命中旧规则并替换；其它情况一律报错
           if grep -qF "$NEW_RULE" "$TARGET_MAKEFILE"; then
             echo "config_data 规则已是 stock_defconfig，跳过。"
           elif grep -qF "$OLD_RULE" "$TARGET_MAKEFILE"; then
@@ -596,12 +623,6 @@ jobs:
               fi
             fi
 
-            # Android 14 - 5.15 修复
-            if [[ "${{ inputs.android_version }}" == "android14" && "${{ inputs.kernel_version }}" == "5.15" ]]; then
-              if [[ "$CURRENT_SUB" -le 148 && "${{ inputs.os_patch_level }}" != "2024-05" ]]; then
-                sed -i -e 's/goto show_pad;/return 0;/' ./fs/proc/task_mmu.c
-              fi
-            fi
 
             # Android 14 - 6.1 修复
             if [[ "${{ inputs.android_version }}" == "android14" && "${{ inputs.kernel_version }}" == "6.1" ]]; then

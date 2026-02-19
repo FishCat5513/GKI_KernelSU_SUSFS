@@ -66,7 +66,7 @@ Build now auto-detects `config/stock_defconfig`: if present, it is applied; if a
 
 During build, workflow will automatically:
 - copy it to `$KERNEL_ROOT/common/arch/arm64/configs/stock_defconfig`
-- switch Makefile `config_data` rule from `$(KCONFIG_CONFIG)` to `stock_defconfig`
+- in `$KERNEL_ROOT/common/kernel/Makefile`, switch `$(obj)/config_data` rule from `$(KCONFIG_CONFIG)` to `arch/arm64/configs/stock_defconfig`
 - make `/proc/config.gz` in the built kernel closer to your stock kernel config
 
 ## Recommended Modules

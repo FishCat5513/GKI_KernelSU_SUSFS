@@ -147,7 +147,7 @@ sukisu=
 
 构建流程会自动：
 - 复制到内核源码：`$KERNEL_ROOT/common/arch/arm64/configs/stock_defconfig`
-- 将 Makefile 规则从 `$(KCONFIG_CONFIG)` 切换为 `stock_defconfig`
+- 在 `$KERNEL_ROOT/common/kernel/Makefile` 中将 `$(obj)/config_data` 规则从 `$(KCONFIG_CONFIG)` 切换为 `arch/arm64/configs/stock_defconfig`
 - 使编译产物中的 `/proc/config.gz` 更贴近你的官方内核配置
 ---
 
