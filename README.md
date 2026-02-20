@@ -57,20 +57,8 @@ Wiki 涵盖内容：
 - 🆘 救砖指南
 - 📊 内核版本兼容性说明
 - **🔧 [Fork 与自定义编译指南](https://github.com/zzh20188/GKI_KernelSU_SUSFS/wiki/Fork%E4%B8%8E%E8%87%AA%E5%AE%9A%E4%B9%89%E7%BC%96%E8%AF%91%E6%8C%87%E5%8D%97)** - 学习如何 Fork 仓库并编译自己的内核
-- **🧩 [自定义构建新手指南](https://github.com/zzh20188/GKI_KernelSU_SUSFS/wiki/%E8%87%AA%E5%AE%9A%E4%B9%89%E6%9E%84%E5%BB%BA%E6%96%B0%E6%89%8B%E6%8C%87%E5%8D%97)** - 面向新手的自定义构建模板
-如何使用见以下视频
-
-https://github.com/user-attachments/assets/b71dcb0d-0fcc-4ade-a734-152ab4821bbd
-
-
-https://github.com/user-attachments/assets/fa60829d-dd51-420a-b55b-d01e521c739d
-
-
-
-
-
-
-谷歌GKI发布地址：https://source.android.com/docs/core/architecture/kernel/gki-release-builds?hl=zh-cn
+- 🧩 自定义构建新手指南
+   - 你只需要查看 https://zzh20188.github.io/GKI_KernelSU_SUSFS/ ，找到你需要编译的内核的参数，Action处选择构建自定义版本的工作流填入即可。***此外这里还提供了自定义构建时间转换***
 
 ---
 

@@ -41,7 +41,6 @@ Image.lz4
 *.zip
 
 # Temporary files
-*.tmp
 *.temp
 *.bak
 *.orig
@@ -52,9 +51,11 @@ __pycache__/
 *.py[cod]
 *.pyo
 
+# Web build artifacts (data copied at deploy time)
+web/data/
+
 # Node.js (if any tooling)
 node_modules/
 
-# Git
-.gitignore
+# Other
 .ace-tool/
